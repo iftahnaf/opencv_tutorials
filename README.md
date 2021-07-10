@@ -64,9 +64,9 @@ Track a green ball through a webcam.
 
 Image processing Tests.
 
-## rpi_stream
+## streaming
 
-Video streaming from Raspberry Pi V2 Camera module (Rpi or Jetson nano). Converting cv2 image to ROS image with `cv_bridge` ROS package.
+Video streaming from Raspberry Pi V2 Camera Module IMX219 (Rpi or Jetson nano).
 
 
 
