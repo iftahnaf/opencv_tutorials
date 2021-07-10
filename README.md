@@ -29,9 +29,15 @@ Stream from Raspberry Pi or Jetson nano
 
 *May need to change the IP address or port.*
 
+### Raspberry Pi:
+
 `gst-launch-1.0 -v v4l2src ! video/x-raw,format=YUY2,width=640,height=480 ! jpegenc ! rtpjpegpay ! udpsink host=192.168.1.15 port=5000`
 
-## **Optional** - Stream to the PC and to a local OpenCV - Python script:
+### Jetson Nano:
+
+`gst-launch-1.0 nvarguscamerasrc ! nvvidconv ! jpegenc ! rtpjpegpay ! udpsink host=192.168.1.15 port=5000 auto-multicast=true`
+
+## **Optional** - Stream to the PC and to a local OpenCV - Python script (Raspberry Pi only):
 
 `gst-launch-1.0 -v v4l2src device=/dev/video0 ! "image/jpeg,width=800,height=600,framerate=30/1" ! rtpjpegpay ! tee name=t ! queue max-size-time=10000000 ! udpsink sync=false host=192.168.1.10 port=5000 t. ! queue max-size-time=10000000 ! udpsink sync=false host=127.0.0.1 port=5000`
 
@@ -60,7 +66,8 @@ Image processing Tests.
 
 ## rpi_stream
 
-Video streaming from Raspberry Pi V2 Camera module (Rpi or Jetson nano). Converting cv2 image to ROS image with `cv_bridge` ROS package
+Video streaming from Raspberry Pi V2 Camera module (Rpi or Jetson nano). Converting cv2 image to ROS image with `cv_bridge` ROS package.
+
 
 
 
