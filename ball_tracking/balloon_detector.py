@@ -23,26 +23,27 @@ class balloonDetector():
 		self.frame = self.vs.read()
 		self.frame = self.frame[1] if self.args.get("video", False) else self.frame
 
-		self.frame = imutils.resize(self.frame, width=600)
-		_blurred = cv2.GaussianBlur(self.frame, (11, 11), 0)
-		_hsv = cv2.cvtColor(_blurred, cv2.COLOR_BGR2HSV)
+		if self.frame is not None:
+			self.frame = imutils.resize(self.frame, width=600)
+			_blurred = cv2.GaussianBlur(self.frame, (11, 11), 0)
+			_hsv = cv2.cvtColor(_blurred, cv2.COLOR_BGR2HSV)
 
-		_mask = cv2.inRange(_hsv, self.greenLower, self.greenUpper)
-		_mask = cv2.erode(_mask, None, iterations=2)
-		_mask = cv2.dilate(_mask, None, iterations=2)
+			_mask = cv2.inRange(_hsv, self.greenLower, self.greenUpper)
+			_mask = cv2.erode(_mask, None, iterations=2)
+			_mask = cv2.dilate(_mask, None, iterations=2)
 
-		_cnts = cv2.findContours(_mask.copy(), cv2.RETR_EXTERNAL,
-			cv2.CHAIN_APPROX_SIMPLE)
-		_cnts = imutils.grab_contours(_cnts)
-		self.center = None
+			_cnts = cv2.findContours(_mask.copy(), cv2.RETR_EXTERNAL,
+				cv2.CHAIN_APPROX_SIMPLE)
+			_cnts = imutils.grab_contours(_cnts)
+			self.center = None
 
-		if len(_cnts) > 0:
-			_c = max(_cnts, key=cv2.contourArea)
-			((x, y), _radius) = cv2.minEnclosingCircle(_c)
-			M = cv2.moments(_c)
-			self.center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
-			if _radius > 10:
-				cv2.circle(self.frame, self.center, 5, (0, 0, 255), -1)	
+			if len(_cnts) > 0:
+				_c = max(_cnts, key=cv2.contourArea)
+				((x, y), _radius) = cv2.minEnclosingCircle(_c)
+				M = cv2.moments(_c)
+				self.center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+				if _radius > 10:
+					cv2.circle(self.frame, self.center, 5, (0, 0, 255), -1)	
 
 	def guard(self):
 		if not self.args.get("video", False):
