@@ -13,12 +13,12 @@ class balloonDetector():
 		self.ap = argparse.ArgumentParser()
 		self.ap.add_argument("-v", "--video", help="path to the (optional) video file")
 		self.args = vars(self.ap.parse_args())
-
+	
 		if not self.args.get("video", False):
 			self.vs = VideoStream(src=0).start()
 		else:
-			self.vs = cv2.VideoCapture(self.args["video"])
-
+			self.vs = cv2.VideoCapture("ball_tracking_example.mp4")
+		
 	def findBalloon(self):
 		self.frame = self.vs.read()
 		self.frame = self.frame[1] if self.args.get("video", False) else self.frame
@@ -40,13 +40,9 @@ class balloonDetector():
 			c = max(_cnts, key=cv2.contourArea)
 			((x, y), radius) = cv2.minEnclosingCircle(c)
 			M = cv2.moments(c)
-			_center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+			self.center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
 			if radius > 10:
-				cv2.circle(self.frame, self.center, 5, (0, 0, 255), -1)
-	
-	def showImage(self):
-		cv2.imshow("Frame", self.frame)
-		self.key = cv2.waitKey(1) & 0xFF
+				cv2.circle(self.frame, self.center, 5, (0, 0, 255), -1)	
 
 	def guard(self):
 		if not self.args.get("video", False):
@@ -57,11 +53,17 @@ class balloonDetector():
 def main():
 	detector = balloonDetector()
 	detector.videoSrc()
+	
 	time.sleep(1.0)
+
 	while True:
 		detector.findBalloon()
-		detector.showImage()
-		detector.guard()
+
+		cv2.imshow("Frame", detector.frame)
+		key = cv2.waitKey(1) & 0xFF
+
+		if key == ord("q"):
+			break
 
 	cv2.destroyAllWindows()
 
