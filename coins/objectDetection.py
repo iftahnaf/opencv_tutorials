@@ -19,7 +19,6 @@ last_image = np.uint8(last_image)
 
 cnts = cv2.findContours(last_image.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 cnts = imutils.grab_contours(cnts)
-print(cnts)
 
 for (i, c) in enumerate(cnts):
     ((x,y), _) = cv2.minEnclosingCircle(c)
