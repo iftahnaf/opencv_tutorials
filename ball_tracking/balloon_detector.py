@@ -37,11 +37,11 @@ class balloonDetector():
 		self.center = None
 
 		if len(_cnts) > 0:
-			c = max(_cnts, key=cv2.contourArea)
-			((x, y), radius) = cv2.minEnclosingCircle(c)
-			M = cv2.moments(c)
+			_c = max(_cnts, key=cv2.contourArea)
+			((x, y), _radius) = cv2.minEnclosingCircle(_c)
+			M = cv2.moments(_c)
 			self.center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
-			if radius > 10:
+			if _radius > 10:
 				cv2.circle(self.frame, self.center, 5, (0, 0, 255), -1)	
 
 	def guard(self):
@@ -63,6 +63,7 @@ def main():
 		key = cv2.waitKey(1) & 0xFF
 
 		if key == ord("q"):
+			detector.guard()
 			break
 
 	cv2.destroyAllWindows()
