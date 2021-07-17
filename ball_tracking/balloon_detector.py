@@ -136,7 +136,7 @@ class Video():
 class balloonDetector():
 	def __init__(self):
 		self.greenLower = (29, 86, 6)
-		self.greenUpper = (255, 255, 255)
+		self.greenUpper = (64, 255, 255)
 
 	def videoSrc(self):
 		self.ap = argparse.ArgumentParser()
