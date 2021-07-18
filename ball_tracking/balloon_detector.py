@@ -11,6 +11,7 @@ import numpy as np
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst
 
+
 class Video():
     """BlueRov video capture class constructor
     Attributes:
@@ -132,7 +133,6 @@ class Video():
         return Gst.FlowReturn.OK
 
 
-
 class balloonDetector():
 	def __init__(self):
 		self.greenLower = (29, 86, 6)
@@ -153,12 +153,16 @@ class balloonDetector():
 		print("Video Source : {}".format(self.vs))
 		
 	def findBalloon(self):
+
 		if self.flag == 0:
 			self.frame = self.vs.read()
 			self.frame = self.frame[1] if self.args.get("video", False) else self.frame
 		else:
 			self.frame = self.vs.frame()
 
+		cv2.imshow("Frame", self.frame)
+		key = cv2.waitKey(1) & 0xFF
+		
 		if self.frame is not None:
 			self.frame = imutils.resize(self.frame, width=600)
 			_blurred = cv2.GaussianBlur(self.frame, (11, 11), 0)
@@ -179,7 +183,7 @@ class balloonDetector():
 				M = cv2.moments(_c)
 				self.center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
 				if _radius > 10:
-					cv2.circle(self.frame, self.center, 5, (0, 0, 255), -1)	
+					cv2.circle(self.frame, self.center, 5, (0, 0, 255), -1)
 
 	def guard(self):
 		if not self.args.get("video", False):
@@ -190,18 +194,17 @@ class balloonDetector():
 def main():
 	detector = balloonDetector()
 	detector.videoSrc()
-	
-	time.sleep(1.0)
+	time.sleep(0.1)
 
 	while True:
 		detector.findBalloon()
 
-		cv2.imshow("Frame", detector.frame)
-		key = cv2.waitKey(1) & 0xFF
+		# cv2.imshow("Frame", detector.frame)
+		# key = cv2.waitKey(1) & 0xFF
 
-		if key == ord("q"):
-			detector.guard()
-			break
+		# if key == ord("q"):
+		# 	detector.guard()
+		# 	break
 
 	cv2.destroyAllWindows()
 

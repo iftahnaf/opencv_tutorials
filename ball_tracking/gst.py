@@ -7,7 +7,6 @@ import numpy as np
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst
 
-
 class Video():
     """BlueRov video capture class constructor
     Attributes:
@@ -133,7 +132,7 @@ if __name__ == '__main__':
     # Create the video object
     # Add port= if is necessary to use a different one
     video = Video()
-
+ 
     while True:
         # Wait for the next frame
         if not video.frame_available():
