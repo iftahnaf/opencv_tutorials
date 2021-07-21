@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 import rospy
 import cv2
-import numpy as np
+import math
 from cv_bridge import CvBridge
 import gazebo_balloon_detector
 import threading
 from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import TwistStamped
 from copy import deepcopy
+import time
+from tf.transformations import euler_from_quaternion
 
 # run : rosservice call /mavros/setpoint_velocity/mav_frame "mav_frame: 8" before launching the node
 
@@ -18,14 +20,14 @@ class BalloonKiller(threading.Thread):
         self.rate = rospy.Rate(10)
         self.bridge = CvBridge()
 
-        self.pose_cb()
-        self.vel_cb()
         self.video = gazebo_balloon_detector.Video()
+        self.pose = PoseStamped()
+        self.vel = TwistStamped()
 
         self.pose_sub = rospy.Subscriber(
-            '/mavros/loacl_position/pose', PoseStamped, self.pose_cb)
+            '/mavros/local_position/pose', PoseStamped, self.pose_cb)
         self.vel_sub = rospy.Subscriber(
-            '/mavros/loacl_position/velocity', TwistStamped, self.vel_cb)
+            '/mavros/local_position/velocity_local', TwistStamped, self.vel_cb)
 
         self.vel_pub = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size=10)
         self.pose_pub = rospy.Publisher('/mavros/setpoint_position/local', PoseStamped, queue_size=10)
@@ -36,74 +38,78 @@ class BalloonKiller(threading.Thread):
     def vel_cb(self, msg):
         self.vel = deepcopy(msg)
 
-    def quaternion_to_euler_angle_vectorized1(w, x, y, z):
-        ysqr = y * y
-
-        t0 = +2.0 * (w * x + y * z)
-        t1 = +1.0 - 2.0 * (x * x + ysqr)
-        X = np.degrees(np.arctan2(t0, t1))
-
-        t2 = +2.0 * (w * y - z * x)
-        t2 = np.where(t2 > +1.0, +1.0, t2)
-        #t2 = +1.0 if t2 > +1.0 else t2
-
-        t2 = np.where(t2 < -1.0, -1.0, t2)
-        #t2 = -1.0 if t2 < -1.0 else t2
-        Y = np.degrees(np.arcsin(t2))
-
-        t3 = +2.0 * (w * z + x * y)
-        t4 = +1.0 - 2.0 * (ysqr + z * z)
-        Z = np.degrees(np.arctan2(t3, t4))
-
-        return Z
     def takeoff(self):
+        time.sleep(1)
         des_pose = PoseStamped()
-        z = self.pose.position.z
+        z = self.pose.pose.position.z
         err = 0.5
         des_pose.pose.position.x = 0.0
         des_pose.pose.position.y = 0.0
         des_pose.pose.position.z = 5.0
-        while z - des_pose.pose.position.z > err:
-            z = self.pose.position.z
+        while True:
+            z = self.pose.pose.position.z
             self.pose_pub.publish(des_pose)
-        rospy.logerr_once("***** Drone Ready to Scan *****")
+            rospy.loginfo_throttle(2, "Z = {}".format(z))
+            if des_pose.pose.position.z - z < err:
+                break
+        rospy.loginfo_once("***** Drone Ready to Scan *****")
+        time.sleep(1)
 
     def scanning(self):
         des_vel = TwistStamped()
 
-        x = self.pose.orientation.x
-        y = self.pose.orientation.y
-        z = self.pose.orientation.z
-        w = self.pose.orientation.w
-        des_vel.twist.angular.x = 0
-        des_vel.twist.angular.y = 0
-        des_vel.twist.angular.z = 0.5
+        x = self.pose.pose.orientation.x
+        y = self.pose.pose.orientation.y
+        z = self.pose.pose.orientation.z
+        w = self.pose.pose.orientation.w
+        q = (x, y ,z ,w)
+        des_vel.twist.linear.x = 0
+        des_vel.twist.linear.y = 0
+        des_vel.twist.angular.z = 0.3
 
-        yaw0 = self.quaternion_to_euler_angle_vectorized1(w, x, y, z)
+        euler =  euler_from_quaternion(q)
+        yaw0 = math.degrees(euler[2])
+        err = 10
         rounds_counter = 0
 
         while True:
-            self.center = self.video.findBalloon()
-            yaw = self.quaternion_to_euler_angle_vectorized1(w, x, y, z)
+            self.center = self.video.findBalloon(320)
+            x = self.pose.pose.orientation.x
+            y = self.pose.pose.orientation.y
+            z = self.pose.pose.orientation.z
+            w = self.pose.pose.orientation.w
+            q = (x, y ,z ,w)
+            euler = euler_from_quaternion(q)
+            yaw = math.degrees(euler[2])
+            rospy.loginfo_throttle(2, "Yaw = {}".format(yaw))
+
 
             if self.center is not None:
-                rospy.logerr_once("***** Found Balloon! *****")
+                rospy.loginfo_once("***** Found Balloon! *****")
+                self.balloon_x = self.pose.pose.position.x
+                self.balloon_y = self.pose.pose.position.y
+                self.balloon_z = self.pose.pose.position.z
+                rospy.loginfo_once("Balloon Center: ({},{})".format(self.center[0], self.center[1]))
                 break
-            elif self.center is None and abs(yaw - yaw0) < 350:
+            elif self.center is None and abs(yaw - yaw0) < err:
                 self.vel_pub.publish(des_vel)
-            elif self.center is None and abs(yaw - yaw0) > 350:
+            elif self.center is None and abs(yaw - yaw0) > err:
+                time.sleep(1)
+                des_vel.twist.linear.x = rounds_counter
+                des_vel.twist.linear.y = rounds_counter
                 rounds_counter += 1
-                des_vel.twist.angular.x = rounds_counter
-                des_vel.twist.angular.y = rounds_counter
-                des_vel.twist.angular.z = 0.5
-                self.vel_pub.publish(des_vel)              
-            rospy.logdebug_throttle(5, "***** Scanning for Balloon *****")
+                des_vel.twist.angular.z = 0.5 + 0.5*rounds_counter
+                self.vel_pub.publish(des_vel) 
+                rospy.loginfo_throttle(1,"Complete {} Rounds".format(rounds_counter))
+                         
+            rospy.loginfo_throttle(2, "***** Scanning for Balloon *****")
 
     def run(self):
         self.takeoff()
         while True:
             try:
                 self.scanning()
+                self.rate.sleep()
             except KeyboardInterrupt:
                 print("Shutting Down the Node")
 
