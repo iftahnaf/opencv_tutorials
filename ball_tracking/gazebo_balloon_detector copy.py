@@ -158,13 +158,18 @@ class Video(threading.Thread):
                 if _radius > 5:
                     cv2.circle(self._frame, self.center,
                                5, (0, 0, 255), -1)
+            try:
+                return self.center
+            except:
+                return None
+
 
     def run(self):
         while True:
             # Wait for the next frame
             if not self.frame_available():
                 continue
-            self.findBalloon(320)
+            self.center = self.findBalloon(320)
             self.cb(self.center)
             frame = self.frame()
             cv2.imshow('frame', frame)
