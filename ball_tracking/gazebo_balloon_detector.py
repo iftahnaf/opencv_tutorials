@@ -129,12 +129,12 @@ class Video():
 
         return Gst.FlowReturn.OK
 
-    def findBalloon(self):
+    def findBalloon(self, camera_width):
         greenLower = (29, 86, 6)
         greenUpper = (64, 255, 255)
 
         if self._frame is not None:
-            self._frame = imutils.resize(self._frame, width=320)
+            self._frame = imutils.resize(self._frame, width=camera_width)
             _blurred = cv2.GaussianBlur(self._frame, (11, 11), 0)
             _hsv = cv2.cvtColor(_blurred, cv2.COLOR_BGR2HSV)
 
@@ -167,7 +167,7 @@ if __name__ == '__main__':
         # Wait for the next frame
         if not video.frame_available():
             continue
-        video.findBalloon()
+        video.findBalloon(320)
         frame = video.frame()
         cv2.imshow('frame', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
