@@ -25,6 +25,7 @@ class BalloonKiller(threading.Thread):
         self.vel = TwistStamped()
 
         self.width = 320
+        self.height = 240
 
         self.pose_sub = rospy.Subscriber(
             '/mavros/local_position/pose', PoseStamped, self.pose_cb)
@@ -65,13 +66,14 @@ class BalloonKiller(threading.Thread):
         z = self.pose.pose.orientation.z
         w = self.pose.pose.orientation.w
         q = (x, y ,z ,w)
-        des_vel.twist.linear.x = 0
-        des_vel.twist.linear.y = 0
-        des_vel.twist.angular.z = 0.3
 
         euler =  euler_from_quaternion(q)
         yaw0 = math.degrees(euler[2])
         err = 10
+
+        des_vel.twist.linear.x = 0
+        des_vel.twist.angular.z = 0.3
+
         rounds_counter = 0
 
         while True:
@@ -86,15 +88,7 @@ class BalloonKiller(threading.Thread):
 
             if self.center is not None:
                 rospy.loginfo_once("***** Found Balloon! *****")
-                self.balloon_x = self.pose.pose.position.x
-                self.balloon_y = self.pose.pose.position.y
-                self.balloon_z = self.pose.pose.position.z
-
-                self.balloon_qx = self.pose.pose.orientation.x
-                self.balloon_qy = self.pose.pose.orientation.y
-                self.balloon_qz = self.pose.pose.orientation.z
-                self.balloon_qw = self.pose.pose.orientation.w
-
+                self.balloon = deepcopy(self.pose)
                 rospy.loginfo_once("Balloon Center: ({},{})".format(self.center[0], self.center[1]))
                 break
 
@@ -102,12 +96,11 @@ class BalloonKiller(threading.Thread):
                 self.vel_pub.publish(des_vel)
 
             elif self.center is None and abs(yaw - yaw0) < err:
-                des_vel.twist.linear.x = rounds_counter
-                des_vel.twist.linear.y = rounds_counter
-                rounds_counter += 0.01
-                des_vel.twist.angular.z = 0.3 + 0.1*rounds_counter
+                des_vel.twist.linear.x = 0.01*rounds_counter
+                des_vel.twist.angular.z = 0.3 + 0.01*rounds_counter
                 self.vel_pub.publish(des_vel) 
-                rospy.loginfo_throttle(1,"Complete {} Rounds".format(rounds_counter))
+                rospy.loginfo_throttle(1,"Complete {} Rounds".format(int(rounds_counter)))
+                rounds_counter += 1
                          
             rospy.loginfo_throttle(5, "***** Scanning for Balloon *****")
             self.rate.sleep()
@@ -115,21 +108,22 @@ class BalloonKiller(threading.Thread):
     def hold(self):
         hold_time = 10
         hold_time_start = time.time()
-
         while time.time() < hold_time + hold_time_start:
-            des_pose = PoseStamped()
-            des_pose.pose.position.x = self.balloon_x
-            des_pose.pose.position.y = self.balloon_y
-            des_pose.pose.position.z = self.balloon_z
-            des_pose.pose.orientation.x = self.balloon_qx
-            des_pose.pose.orientation.y = self.balloon_qy
-            des_pose.pose.orientation.z = self.balloon_qz
-            des_pose.pose.orientation.w = self.balloon_qw
-            self.pose_pub.publish(des_pose)
+            self.pose_pub.publish(self.balloon)
             self.rate.sleep()
 
     def tracking(self):
         rospy.loginfo_once("***** Tracking the Balloon *****")
+        des_vel = TwistStamped()
+        tol = 20
+        if self.center[1] > self.height / 2.0:
+            des_vel.twist.linear.z = 0.5
+            self.vel_pub.publish
+
+
+        # while self.center < self.width/2.0:
+        #     
+        #     des_vel.twist.z
 
     def run(self):
         self.takeoff()
