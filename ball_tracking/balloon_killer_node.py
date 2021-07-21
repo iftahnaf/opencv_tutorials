@@ -15,7 +15,7 @@ class BalloonKiller(threading.Thread):
         self.rate = rospy.Rate(10)
         self.bridge = CvBridge()
 
-        self.video = gazebo_balloon_detector.Video()
+        self.video = gazebo_balloon_detector.Video(self)
         self.width = 320
         self.height = 240
 
@@ -31,6 +31,9 @@ class BalloonKiller(threading.Thread):
             '/mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size=10)
         self.pose_pub = rospy.Publisher(
             '/mavros/setpoint_position/local', PoseStamped, queue_size=10)
+
+    def __call__(self, data):
+        self.center = data
 
     def pose_cb(self, msg):
         self.pose = deepcopy(msg)
@@ -64,6 +67,7 @@ class BalloonKiller(threading.Thread):
                 self.balloon = deepcopy(self.pose)
                 rospy.loginfo_once("Balloon Center: ({},{})".format(
                     self.center[0], self.center[1]))
+                self.video.start()
                 break
 
             else:
@@ -102,7 +106,6 @@ class BalloonKiller(threading.Thread):
 
         while True:
             try:
-                self.center = self.video.findBalloon(self.width)
                 self.vel_pub.publish(des_vel)
                 if self.center[1] - self.height/2 < tol:
                     break
